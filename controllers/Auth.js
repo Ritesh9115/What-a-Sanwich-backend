@@ -18,6 +18,12 @@ const transporter = nodemailer.createTransport({
 
 const sendOtp = async (to, otp) => {
 	try {
+		console.log("GMAIL_ACCOUNT:", process.env.GMAIL_ACCOUNT);
+		console.log(
+			"GMAIL_APP_PASSWORD:",
+			process.env.GMAIL_APP_PASSWORD ? "SET" : "MISSING"
+		);
+
 		await transporter.sendMail({
 			from: process.env.GMAIL_ACCOUNT,
 			to: to,
