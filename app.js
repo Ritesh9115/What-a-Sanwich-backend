@@ -37,12 +37,13 @@ app.use("/api/v1/admin", adminRoutes);
 const start = async () => {
 	try {
 		const connectionDb = await mongoose.connect(process.env.MONGODB_URL);
-		console.log("Connected to mongoDb");
+		// console.log("Connected to mongoDb");
 		server.listen(Port, () => {
-			console.log(`server is listening on ${Port}`);
+			// console.log(`server is listening on ${Port}`);
 		});
 	} catch (error) {
-		console.log(error);
+		// console.log(error);
+		return err;
 	}
 };
 
