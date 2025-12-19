@@ -11,7 +11,7 @@ import { socketConnection } from "./webSockets/Socket.js";
 
 dotenv.config();
 const app = express();
-
+app.set("trust proxy", 1);
 const Port = process.env.PORT || "3000";
 app.use(
 	cors({
@@ -19,7 +19,6 @@ app.use(
 		credentials: true,
 	})
 );
-app.set("trust proxy", 1);
 
 app.use(cookieParser());
 app.use(express.json());
