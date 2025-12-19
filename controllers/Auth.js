@@ -4,29 +4,20 @@ import argon2 from "argon2";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
+import { Resend } from "resend";
 dotenv.config();
 
-const transporter = nodemailer.createTransport({
-	host: "smtp.gmail.com",
-	port: 587,
-	secure: false,
-	auth: {
-		user: process.env.GMAIL_ACCOUNT,
-		pass: process.env.GMAIL_APP_PASSWORD,
-	},
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOtp = async (to, otp) => {
 	try {
-		console.log("GMAIL_ACCOUNT:", process.env.GMAIL_ACCOUNT);
-		console.log(
-			"GMAIL_APP_PASSWORD:",
-			process.env.GMAIL_APP_PASSWORD ? "SET" : "MISSING"
-		);
+		console.log(`Attempting to send OTP to ${to} via Resend...`);
 
-		await transporter.sendMail({
-			from: process.env.GMAIL_ACCOUNT,
-			to: to,
+		const { data, error } = await resend.emails.send({
+			// IMPORTANT: In testing mode, 'from' MUST be this exact address
+			from: "onboarding@resend.dev",
+			// IMPORTANT: In testing mode, 'to' MUST be your registered Resend email
+			to: [to],
 			subject: "What A Sandwich - Email Verification OTP",
 			html: `
             <div style="
@@ -117,6 +108,7 @@ const sendOtp = async (to, otp) => {
                             color: rgba(81, 35, 20, 0.5);
                             font-size: 12px;
                             margin: 0;
+                            font-family: sans-serif;
                         ">
                             If you didn't request this code, you can safely ignore this email.
                         </p>
@@ -124,8 +116,15 @@ const sendOtp = async (to, otp) => {
                 </div>
             </div>`,
 		});
+
+		if (error) {
+			console.error("Resend API Error:", error);
+			return;
+		}
+
+		console.log("OTP sent successfully:", data);
 	} catch (error) {
-		console.log(error);
+		console.log("Server Error sending OTP:", error);
 	}
 };
 
