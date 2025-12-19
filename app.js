@@ -16,6 +16,7 @@ const Port = process.env.PORT || "3000";
 const allowedOrigins = [
 	"https://what-a-sanwich-frontend.vercel.app",
 	"https://www.what-a-sanwich-frontend.vercel.app",
+	"what-a-sanwich-frontend-riteshs-projects-e1353508.vercel.app",
 ];
 
 app.use(
