@@ -18,6 +18,8 @@ const isLogin = (allowedRole = []) => {
 				allowedRole,
 				userRole: user.role,
 			});
+			console.log("VERIFY SECRET:", process.env.JWT_HIDDEN_SECERT);
+
 			const decoded = jwt.verify(token, process.env.JWT_HIDDEN_SECERT);
 
 			const user = await User.findById(decoded.id);

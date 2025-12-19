@@ -403,6 +403,8 @@ const login = async (req, res) => {
 			.status(httpStatus.NOT_FOUND)
 			.json({ message: "Password does not match" });
 	}
+	console.log("SIGN SECRET:", process.env.JWT_HIDDEN_SECERT);
+
 	const token = jwt.sign(
 		{
 			id: user._id,
