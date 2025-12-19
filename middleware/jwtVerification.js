@@ -9,9 +9,11 @@ const isLogin = (allowedRole = []) => {
 	return async (req, res, next) => {
 		try {
 			// 1️⃣ Read token from cookie
+			console.log("Cookies received:", req.cookies);
 			const token = req.cookies?.token;
 
 			if (!token) {
+				console.log("Token missing from cookies");
 				return res.status(httpStatus.UNAUTHORIZED).json({
 					message: "Please login first",
 				});

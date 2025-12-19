@@ -13,9 +13,26 @@ dotenv.config();
 const app = express();
 app.set("trust proxy", 1);
 const Port = process.env.PORT || "3000";
+const allowedOrigins = [
+	"https://what-a-sanwich-frontend.vercel.app",
+	"https://www.what-a-sanwich-frontend.vercel.app",
+];
+
 app.use(
 	cors({
-		origin: "https://what-a-sanwich-frontend.vercel.app",
+		origin: (origin, callback) => {
+			// Allow requests with no origin (like mobile apps or curl requests)
+			if (!origin) return callback(null, true);
+			if (allowedOrigins.indexOf(origin) === -1) {
+				return callback(
+					new Error(
+						"The CORS policy for this site does not allow access from the specified Origin."
+					),
+					false
+				);
+			}
+			return callback(null, true);
+		},
 		credentials: true,
 	})
 );
