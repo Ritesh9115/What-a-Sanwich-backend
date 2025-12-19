@@ -1,10 +1,3 @@
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import httpStatus from "http-status";
-import { User } from "../models/User.js";
-
-dotenv.config();
-
 const isLogin = (allowedRole = []) => {
 	return async (req, res, next) => {
 		try {
@@ -14,10 +7,7 @@ const isLogin = (allowedRole = []) => {
 					message: "Please login first",
 				});
 			}
-			console.log("ROLE CHECK:", {
-				allowedRole,
-				userRole: user.role,
-			});
+
 			console.log("VERIFY SECRET:", process.env.JWT_HIDDEN_SECERT);
 
 			const decoded = jwt.verify(token, process.env.JWT_HIDDEN_SECERT);
@@ -29,7 +19,12 @@ const isLogin = (allowedRole = []) => {
 				});
 			}
 
-			if (!allowedRole.includes(user.role)) {
+			console.log("ROLE CHECK:", {
+				allowedRole,
+				userRole: user.role,
+			});
+
+			if (allowedRole.length && !allowedRole.includes(user.role)) {
 				return res.status(httpStatus.FORBIDDEN).json({
 					message: "Access denied",
 				});
@@ -38,12 +33,10 @@ const isLogin = (allowedRole = []) => {
 			req.user = user;
 			next();
 		} catch (error) {
-			console.log("JWT ERROR:", error);
+			console.log("JWT ERROR:", error.message);
 			return res.status(httpStatus.UNAUTHORIZED).json({
 				message: "Invalid or expired token",
 			});
 		}
 	};
 };
-
-export { isLogin };
