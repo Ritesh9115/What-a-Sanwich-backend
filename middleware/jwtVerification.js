@@ -14,7 +14,10 @@ const isLogin = (allowedRole = []) => {
 					message: "Please login first",
 				});
 			}
-
+			console.log("ROLE CHECK:", {
+				allowedRole,
+				userRole: user.role,
+			});
 			const decoded = jwt.verify(token, process.env.JWT_HIDDEN_SECERT);
 
 			const user = await User.findById(decoded.id);
