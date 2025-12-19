@@ -30,7 +30,8 @@ const socketConnection = (server) => {
 
 			const decoded = jwt.verify(token, process.env.JWT_HIDDEN_SECERT);
 			socket.role = decoded.role;
-			socket.userId = decoded._id;
+			socket.userId = decoded.id;
+			// socket.userId = decoded._id;
 			next();
 		} catch (err) {
 			next(new Error("Auth failed"));
