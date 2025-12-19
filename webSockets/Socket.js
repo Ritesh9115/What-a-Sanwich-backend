@@ -9,10 +9,7 @@ let io;
 const socketConnection = (server) => {
 	io = new Server(server, {
 		cors: {
-			origin: [
-				"http://localhost:5173",
-				"https://what-a-sanwich-frontend.vercel.app",
-			],
+			origin: "https://what-a-sanwich-frontend.vercel.app",
 			methods: ["GET", "POST"],
 			credentials: true,
 		},

@@ -15,13 +15,12 @@ const app = express();
 const Port = process.env.PORT || "3000";
 app.use(
 	cors({
-		origin: [
-			"http://localhost:5173",
-			"https://what-a-sanwich-frontend.vercel.app",
-		],
+		origin: "https://what-a-sanwich-frontend.vercel.app",
 		credentials: true,
 	})
 );
+app.set("trust proxy", 1);
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
