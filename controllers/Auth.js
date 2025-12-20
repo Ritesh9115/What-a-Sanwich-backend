@@ -14,7 +14,7 @@ const sendOtp = async (to, otp) => {
 		console.log(`Attempting to send OTP to ${to} via Resend...`);
 
 		const { data, error } = await resend.emails.send({
-			from: "verification@whatasandwich.in",
+			from: "verification@sandwichstore.in",
 			to: [to],
 			subject: "What A Sandwich - Email Verification OTP",
 			html: `
