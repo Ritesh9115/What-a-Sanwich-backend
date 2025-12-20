@@ -14,9 +14,9 @@ const app = express();
 app.set("trust proxy", 1);
 const Port = process.env.PORT || "3000";
 const allowedOrigins = [
-	"https://what-a-sanwich-frontend.vercel.app",
-	"https://www.what-a-sanwich-frontend.vercel.app",
-	"https://what-a-sanwich-frontend-riteshs-projects-e1353508.vercel.app",
+	"https://sandwichstore.in",
+	"https://www.sandwichstore.in",
+	"http://localhost:5173",
 ];
 
 app.use(
@@ -55,12 +55,9 @@ app.use("/api/v1/admin", adminRoutes);
 const start = async () => {
 	try {
 		const connectionDb = await mongoose.connect(process.env.MONGODB_URL);
-		// console.log("Connected to mongoDb");
-		server.listen(Port, () => {
-			// console.log(`server is listening on ${Port}`);
-		});
+
+		server.listen(Port, () => {});
 	} catch (error) {
-		// console.log(error);
 		return error;
 	}
 };

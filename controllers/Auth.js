@@ -14,9 +14,7 @@ const sendOtp = async (to, otp) => {
 		console.log(`Attempting to send OTP to ${to} via Resend...`);
 
 		const { data, error } = await resend.emails.send({
-			// IMPORTANT: In testing mode, 'from' MUST be this exact address
-			from: "onboarding@resend.dev",
-			// IMPORTANT: In testing mode, 'to' MUST be your registered Resend email
+			from: "verification@whatasandwich.in",
 			to: [to],
 			subject: "What A Sandwich - Email Verification OTP",
 			html: `
@@ -425,6 +423,7 @@ const login = async (req, res) => {
 		secure: true,
 		maxAge: 15 * 24 * 60 * 60 * 1000,
 		sameSite: "none",
+		domain: ".sandwichstore.in",
 	});
 
 	user.password = undefined;
@@ -505,6 +504,7 @@ const verifyLoginWithOtp = async (req, res) => {
 		secure: true,
 		maxAge: 15 * 24 * 60 * 60 * 1000,
 		sameSite: "none",
+		domain: ".sandwichstore.in",
 	});
 
 	user.verificationEmailCode = null;

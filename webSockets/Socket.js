@@ -9,7 +9,7 @@ let io;
 const socketConnection = (server) => {
 	io = new Server(server, {
 		cors: {
-			origin: "https://what-a-sanwich-frontend.vercel.app",
+			origin: "https://sandwichstore.in",
 			methods: ["GET", "POST"],
 			credentials: true,
 		},
