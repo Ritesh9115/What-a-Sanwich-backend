@@ -1,6 +1,5 @@
 import { Order } from "../models/Order.js";
 import httpStatus from "http-status";
-import { Order } from "../models/Order.js";
 import mongoose from "mongoose";
 
 export const dailyItemStats = async (req, res) => {
