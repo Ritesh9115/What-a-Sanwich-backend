@@ -24,7 +24,7 @@ import {
 	dineInOrder,
 	addItemToOrder,
 	closeTable,
-	setPaymentType,
+	// setPaymentType,
 	getAllOrders,
 	getOneOrders,
 } from "../controllers/Order.js";
@@ -120,7 +120,7 @@ router.post("/dineInOrder", isLogin(["admin"]), dineInOrder);
 router.post("/addItemToOrder", isLogin(["admin"]), addItemToOrder);
 router.post("/closeTable", isLogin(["admin"]), closeTable);
 router.post("/getOneOrders", isLogin(["admin"]), getOneOrders);
-router.post("/setPaymentType", isLogin(["admin"]), setPaymentType);
+// router.post("/setPaymentType", isLogin(["admin"]), setPaymentType);
 router.post("/todayStats", isLogin(["admin"]), todayStats);
 router.post("/yearlyStats", isLogin(["admin"]), yearlyStats);
 router.post("/monthlyStats", isLogin(["admin"]), monthlyStats);
