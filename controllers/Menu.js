@@ -153,6 +153,7 @@ const updateMenu = async (req, res) => {
 		// ✅ SAFE FIELD ASSIGN (NO Object.assign)
 		if (name) menu.name = name;
 		if (description) menu.description = description;
+		if (category) menu.category = category;
 		if (subCategory !== undefined) menu.subCategory = subCategory;
 		if (isVeg !== undefined) menu.isVeg = isVeg;
 		if (isAvailable !== undefined) menu.isAvailable = isAvailable;
@@ -183,8 +184,15 @@ const showOneMenu = async (req, res) => {
 			"category",
 			"name image isActive"
 		);
+
 		if (!menu) {
 			return res.status(404).json({ message: "Menu not found" });
+		}
+
+		if (!menu.category || menu.category.isActive !== true) {
+			return res.status(400).json({
+				message: "Menu category is inactive or missing",
+			});
 		}
 
 		return res.status(200).json({ menu });
@@ -225,28 +233,22 @@ const deleteMenu = async (req, res) => {
 --------------------------------------------------- */
 const showMenu = async (req, res) => {
 	try {
-		// get only active categories
-		const activeCategories = await Category.find(
-			{ isActive: true },
-			{ name: 1 }
-		);
-
-		const activeCategoryNames = activeCategories.map((c) => c.name);
-
-		// show only menu whose category is ACTIVE
-		const menu = await Menu.find({
-			category: { $in: activeCategoryNames },
-			isAvailable: true,
-		})
+		const menu = await Menu.find({ isAvailable: true })
 			.sort({ createdAt: -1 })
 			.populate("category", "name image isActive");
 
-		return res.status(200).json({ menu });
+		// filter out inactive categories AFTER populate
+		const filteredMenu = menu.filter(
+			(m) => m.category && m.category.isActive === true
+		);
+
+		return res.status(200).json({ menu: filteredMenu });
 	} catch (error) {
 		console.log(error);
 		return res.status(500).json({ message: "Server error" });
 	}
 };
+
 export const toggleFeatured = async (req, res) => {
 	try {
 		const { uniCode } = req.body;
@@ -273,23 +275,18 @@ export const toggleFeatured = async (req, res) => {
 };
 export const getFeaturedMenu = async (req, res) => {
 	try {
-		// only active categories
-		const activeCategories = await Category.find(
-			{ isActive: true },
-			{ name: 1 }
-		);
-
-		const activeCategoryNames = activeCategories.map((c) => c.name);
-
 		const menu = await Menu.find({
 			isFeatured: true,
 			isAvailable: true,
-			category: { $in: activeCategoryNames },
 		})
 			.sort({ updatedAt: -1 })
 			.populate("category", "name image isActive");
 
-		return res.status(200).json({ menu });
+		const filteredMenu = menu.filter(
+			(m) => m.category && m.category.isActive === true
+		);
+
+		return res.status(200).json({ menu: filteredMenu });
 	} catch (err) {
 		console.error(err);
 		res.status(500).json({ message: "Server error" });
