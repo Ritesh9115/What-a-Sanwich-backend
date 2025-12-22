@@ -1,5 +1,6 @@
 import { Menu } from "../models/Menu.js";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 import { Category } from "../models/Category.js";
 
 dotenv.config();
@@ -48,8 +49,14 @@ const addMenu = async (req, res) => {
 		}
 
 		// ✅ validate category by NAME (string)
+		if (!mongoose.Types.ObjectId.isValid(category)) {
+			return res.status(400).json({
+				message: "Invalid category id",
+			});
+		}
+
 		const cat = await Category.findOne({
-			name: category,
+			_id: category,
 			isActive: true,
 		});
 
@@ -66,7 +73,7 @@ const addMenu = async (req, res) => {
 			name,
 			image: req.file?.path,
 			description,
-			category, // ✅ STRING ONLY
+			category: category, // ✅ STRING ONLY
 			subCategory,
 			variants: finalVariants,
 			isVeg,
@@ -119,8 +126,12 @@ const updateMenu = async (req, res) => {
 
 		// ✅ validate category by NAME (string)
 		if (category) {
+			if (!mongoose.Types.ObjectId.isValid(category)) {
+				return res.status(400).json({ message: "Invalid category id" });
+			}
+
 			const cat = await Category.findOne({
-				name: category,
+				_id: category,
 				isActive: true,
 			});
 
@@ -129,8 +140,6 @@ const updateMenu = async (req, res) => {
 					message: "Invalid or inactive category",
 				});
 			}
-
-			menu.category = category;
 		}
 
 		if (variants || price) {
