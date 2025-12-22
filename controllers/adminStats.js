@@ -14,7 +14,8 @@ export const dailyItemStats = async (req, res) => {
 			{
 				$match: {
 					createdAt: { $gte: start, $lte: end },
-					status: { $ne: "cancelled" },
+					status: "completed",
+					paymentStatus: "paid",
 				},
 			},
 			{ $unwind: "$items" },
@@ -63,7 +64,6 @@ export const dailyItemStats = async (req, res) => {
 			{ $unwind: "$item" },
 			{
 				$project: {
-					_id: 0,
 					itemId: "$item._id",
 					name: "$item.name",
 					category: "$item.category",
@@ -95,55 +95,50 @@ const todayStats = async (req, res) => {
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
 
-		const todayOrders = await Order.find({
+		const orders = await Order.find({
 			createdAt: { $gte: start, $lte: end },
 		});
 
-		let todayDinein = 0;
 		let todayTotal = 0;
+		let totalOrders = 0;
+		let todayDinein = 0;
 		let todayDelivery = 0;
 		let todayTakeaway = 0;
-		let totalOrders = 0;
 		let cashPayment = 0;
 		let upiPayment = 0;
 		let cancelledOrder = 0;
 
-		for (let order of todayOrders) {
+		for (let o of orders) {
 			totalOrders++;
 
-			if (order.status !== "cancelled") {
-				todayTotal += order.totalAmount;
-				if (order.orderType === "dine-in") {
-					todayDinein++;
-				}
-				if (order.orderType === "delivery") {
-					todayDelivery++;
-				}
-				if (order.orderType === "takeaway") {
-					todayTakeaway++;
-				}
-			}
-			if (order.paymentType === "cash") {
-				cashPayment++;
-			}
-			if (order.paymentType === "upi") {
-				upiPayment++;
+			if (o.status === "cancelled") {
+				cancelledOrder++;
+				continue;
 			}
 
-			if (order.status === "cancelled") {
-				cancelledOrder++;
+			if (o.status === "completed" && o.paymentStatus === "paid") {
+				todayTotal += o.totalAmount;
+
+				if (o.orderType === "dine-in") todayDinein++;
+				if (o.orderType === "delivery") todayDelivery++;
+				if (o.orderType === "takeaway") todayTakeaway++;
+
+				if (o.paymentMethod === "counter") {
+					if (o.paymentType === "cash") cashPayment++;
+					if (o.paymentType === "upi") upiPayment++;
+				}
 			}
 		}
 
 		return res.status(httpStatus.OK).json({
-			message: "Todays details fetched succesfully",
+			message: "Todays details fetched successfully",
 			totalOrders,
 			todayTotal,
 			todayDinein,
 			todayDelivery,
 			todayTakeaway,
-			upiPayment,
 			cashPayment,
+			upiPayment,
 			cancelledOrder,
 		});
 	} catch (error) {
@@ -155,7 +150,7 @@ const todayStats = async (req, res) => {
 const monthlyStats = async (req, res) => {
 	try {
 		const now = new Date();
-		const month = parseInt(req.query.month) || now.getMonth() + 1; // 1-12
+		const month = parseInt(req.query.month) || now.getMonth() + 1;
 		const year = parseInt(req.query.year) || now.getFullYear();
 
 		const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
@@ -175,17 +170,22 @@ const monthlyStats = async (req, res) => {
 		let upi = 0;
 
 		for (let o of orders) {
-			if (o.status !== "cancelled") totalRevenue += o.totalAmount;
+			if (o.status === "cancelled") {
+				cancelled++;
+				continue;
+			}
 
-			if (o.orderType === "dine-in") dineIn++;
-			if (o.orderType === "delivery") delivery++;
-			if (o.orderType === "takeaway") takeaway++;
+			if (o.status === "completed" && o.paymentStatus === "paid") {
+				totalRevenue += o.totalAmount;
 
-			if (o.status === "cancelled") cancelled++;
+				if (o.orderType === "dine-in") dineIn++;
+				if (o.orderType === "delivery") delivery++;
+				if (o.orderType === "takeaway") takeaway++;
 
-			if (o.paymentMethod === "counter") {
-				if (o.paymentType === "cash") cash++;
-				if (o.paymentType === "upi") upi++;
+				if (o.paymentMethod === "counter") {
+					if (o.paymentType === "cash") cash++;
+					if (o.paymentType === "upi") upi++;
+				}
 			}
 		}
 
@@ -228,8 +228,14 @@ const yearlyStats = async (req, res) => {
 			let cancelled = 0;
 
 			for (let o of orders) {
-				if (o.status !== "cancelled") revenue += o.totalAmount;
-				if (o.status === "cancelled") cancelled++;
+				if (o.status === "cancelled") {
+					cancelled++;
+					continue;
+				}
+
+				if (o.status === "completed" && o.paymentStatus === "paid") {
+					revenue += o.totalAmount;
+				}
 			}
 
 			result.push({
@@ -255,19 +261,11 @@ const rangeStats = async (req, res) => {
 	try {
 		const { from, to } = req.body;
 
-		if (!from || !to) {
-			return res.status(400).json({ message: "From and To dates required" });
-		}
-
 		const start = new Date(from);
 		start.setHours(0, 0, 0, 0);
 
 		const end = new Date(to);
 		end.setHours(23, 59, 59, 999);
-
-		if (isNaN(start) || isNaN(end)) {
-			return res.status(400).json({ message: "Invalid date format" });
-		}
 
 		const orders = await Order.find({
 			createdAt: { $gte: start, $lte: end },
@@ -283,19 +281,22 @@ const rangeStats = async (req, res) => {
 		let upi = 0;
 
 		for (let o of orders) {
-			if (o.status !== "cancelled") {
-				totalRevenue += o.totalAmount;
-			} else {
+			if (o.status === "cancelled") {
 				cancelled++;
+				continue;
 			}
 
-			if (o.orderType === "dine-in") dineIn++;
-			if (o.orderType === "delivery") delivery++;
-			if (o.orderType === "takeaway") takeaway++;
+			if (o.status === "completed" && o.paymentStatus === "paid") {
+				totalRevenue += o.totalAmount;
 
-			if (o.paymentMethod === "counter") {
-				if (o.paymentType === "cash") cash++;
-				if (o.paymentType === "upi") upi++;
+				if (o.orderType === "dine-in") dineIn++;
+				if (o.orderType === "delivery") delivery++;
+				if (o.orderType === "takeaway") takeaway++;
+
+				if (o.paymentMethod === "counter") {
+					if (o.paymentType === "cash") cash++;
+					if (o.paymentType === "upi") upi++;
+				}
 			}
 		}
 
