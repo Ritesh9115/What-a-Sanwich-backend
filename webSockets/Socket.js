@@ -5,11 +5,16 @@ import jwt from "jsonwebtoken";
 dotenv.config();
 
 let io;
+const allowedOrigins = [
+	"https://sandwichstore.in",
+	"https://www.sandwichstore.in",
+	"http://localhost:5173",
+];
 
 const socketConnection = (server) => {
 	io = new Server(server, {
 		cors: {
-			origin: "https://sandwichstore.in",
+			origin: allowedOrigins,
 			methods: ["GET", "POST"],
 			credentials: true,
 		},
