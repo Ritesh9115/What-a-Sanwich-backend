@@ -33,6 +33,7 @@ import {
 	yearlyStats,
 	monthlyStats,
 	rangeStats,
+	dailyItemStats,
 } from "../controllers/adminStats.js";
 import {
 	addCoupon,
@@ -73,6 +74,7 @@ router.post(
 	isLogin(["admin"]),
 	updateMenu
 );
+router.post("/admin/dailyItemStats", isLogin(["admin"]), dailyItemStats);
 router.post(
 	"/createCategory",
 	upload.single("image"),

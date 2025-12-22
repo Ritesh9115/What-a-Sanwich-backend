@@ -1,5 +1,92 @@
 import { Order } from "../models/Order.js";
 import httpStatus from "http-status";
+import { Order } from "../models/Order.js";
+import mongoose from "mongoose";
+
+export const dailyItemStats = async (req, res) => {
+	try {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+
+		const end = new Date();
+		end.setHours(23, 59, 59, 999);
+
+		const stats = await Order.aggregate([
+			{
+				$match: {
+					createdAt: { $gte: start, $lte: end },
+					status: { $ne: "cancelled" },
+				},
+			},
+			{ $unwind: "$items" },
+			{
+				$group: {
+					_id: "$items.itemId",
+					totalQuantity: { $sum: "$items.quantity" },
+					revenue: {
+						$sum: {
+							$multiply: ["$items.quantity", "$items.priceAtPurchase"],
+						},
+					},
+					delivery: {
+						$sum: {
+							$cond: [
+								{ $eq: ["$orderType", "delivery"] },
+								"$items.quantity",
+								0,
+							],
+						},
+					},
+					dineIn: {
+						$sum: {
+							$cond: [{ $eq: ["$orderType", "dine-in"] }, "$items.quantity", 0],
+						},
+					},
+					takeaway: {
+						$sum: {
+							$cond: [
+								{ $eq: ["$orderType", "takeaway"] },
+								"$items.quantity",
+								0,
+							],
+						},
+					},
+				},
+			},
+			{
+				$lookup: {
+					from: "menus",
+					localField: "_id",
+					foreignField: "_id",
+					as: "item",
+				},
+			},
+			{ $unwind: "$item" },
+			{
+				$project: {
+					_id: 0,
+					itemId: "$item._id",
+					name: "$item.name",
+					category: "$item.category",
+					totalQuantity: 1,
+					revenue: 1,
+					delivery: 1,
+					dineIn: 1,
+					takeaway: 1,
+				},
+			},
+			{ $sort: { totalQuantity: -1 } },
+		]);
+
+		res.status(200).json({
+			message: "Daily item stats fetched",
+			data: stats,
+		});
+	} catch (err) {
+		console.error(err);
+		res.status(500).json({ message: "Server error" });
+	}
+};
 
 const todayStats = async (req, res) => {
 	try {
