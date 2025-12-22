@@ -74,7 +74,7 @@ router.post(
 	isLogin(["admin"]),
 	updateMenu
 );
-router.post("/admin/dailyItemStats", isLogin(["admin"]), dailyItemStats);
+router.post("/dailyItemStats", isLogin(["admin"]), dailyItemStats);
 router.post(
 	"/createCategory",
 	upload.single("image"),
