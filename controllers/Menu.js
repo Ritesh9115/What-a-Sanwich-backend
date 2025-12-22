@@ -108,7 +108,11 @@ const updateMenu = async (req, res) => {
 			rating,
 		} = req.body;
 
-		const menu = await Menu.findOne({ uniCode });
+		const menu = await Menu.findOne({ uniCode }).populate(
+			"category",
+			"name image isActive"
+		);
+
 		if (!menu) {
 			return res.status(404).json({ message: "Menu not found" });
 		}
@@ -166,7 +170,10 @@ const showOneMenu = async (req, res) => {
 	try {
 		const { _id } = req.body;
 
-		const menu = await Menu.findById(_id);
+		const menu = await Menu.findById(_id).populate(
+			"category",
+			"name image isActive"
+		);
 		if (!menu) {
 			return res.status(404).json({ message: "Menu not found" });
 		}
@@ -221,7 +228,9 @@ const showMenu = async (req, res) => {
 		const menu = await Menu.find({
 			category: { $in: activeCategoryNames },
 			isAvailable: true,
-		}).sort({ createdAt: -1 });
+		})
+			.sort({ createdAt: -1 })
+			.populate("category", "name image isActive");
 
 		return res.status(200).json({ menu });
 	} catch (error) {
@@ -233,7 +242,10 @@ export const toggleFeatured = async (req, res) => {
 	try {
 		const { uniCode } = req.body;
 
-		const menu = await Menu.findOne({ uniCode });
+		const menu = await Menu.findOne({ uniCode }).populate(
+			"category",
+			"name image isActive"
+		);
 		if (!menu) {
 			return res.status(404).json({ message: "Menu not found" });
 		}
@@ -264,7 +276,9 @@ export const getFeaturedMenu = async (req, res) => {
 			isFeatured: true,
 			isAvailable: true,
 			category: { $in: activeCategoryNames },
-		}).sort({ updatedAt: -1 });
+		})
+			.sort({ updatedAt: -1 })
+			.populate("category", "name image isActive");
 
 		return res.status(200).json({ menu });
 	} catch (err) {
@@ -288,6 +302,7 @@ const searchMenu = async (req, res) => {
 			name: { $regex: query, $options: "i" },
 		})
 			.sort({ name: 1 })
+			.populate("category", "name image isActive")
 			.limit(5);
 
 		return res.status(200).json({ suggestions: menu });
@@ -308,7 +323,10 @@ const toggleAvailability = async (req, res) => {
 			return res.status(400).json({ message: "Invalid values" });
 		}
 
-		const menu = await Menu.findOne({ uniCode });
+		const menu = await Menu.findOne({ uniCode }).populate(
+			"category",
+			"name image isActive"
+		);
 		if (!menu) {
 			return res.status(404).json({ message: "Menu item not found" });
 		}
@@ -327,7 +345,9 @@ const toggleAvailability = async (req, res) => {
 };
 const showMenuForAdmin = async (req, res) => {
 	try {
-		const menu = await Menu.find().sort({ createdAt: -1 });
+		const menu = await Menu.find()
+			.sort({ createdAt: -1 })
+			.populate("category", "name image isActive");
 		return res.status(200).json({ menu });
 	} catch (err) {
 		return res.status(500).json({ message: "Server error" });

@@ -26,7 +26,10 @@ const createOrder = async (
 		let subtotal = 0;
 
 		for (const item of items) {
-			const menu = await Menu.findOne({ uniCode: item.uniCode });
+			const menu = await Menu.findOne({ uniCode: item.uniCode }).populate(
+				"category",
+				"name image isActive"
+			);
 			if (!menu) throw new Error("Menu item not exists");
 			if (!menu.isAvailable) throw new Error("Menu item is unavailable");
 
@@ -464,7 +467,10 @@ const addItemToOrder = async (req, res) => {
 		let newItems = [];
 
 		for (const item of items) {
-			const menu = await Menu.findOne({ uniCode: item.uniCode });
+			const menu = await Menu.findOne({ uniCode: item.uniCode }).populate(
+				"category",
+				"name image isActive"
+			);
 			if (!menu) throw new Error("Item does not exist");
 			if (!menu.isAvailable) throw new Error("Item unavailable");
 
