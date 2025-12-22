@@ -10,10 +10,6 @@ import dayjs from "dayjs";
 
 dotenv.config();
 
-/* ==========================================================================
-   HELPER: Create Order Logic
-   (No changes here to allow Admins to have multiple active table orders)
-   ========================================================================== */
 const createOrder = async (
 	user,
 	items,
@@ -29,7 +25,6 @@ const createOrder = async (
 		let orderItems = [];
 		let subtotal = 0;
 
-		// VALIDATE & CONVERT ITEMS
 		for (const item of items) {
 			const menu = await Menu.findOne({ uniCode: item.uniCode });
 			if (!menu) throw new Error("Menu item not exists");
@@ -51,7 +46,6 @@ const createOrder = async (
 			});
 		}
 
-		/* ------------------  APPLY COUPON ------------------ */
 		let coupon = null;
 
 		if (couponCode) {
@@ -84,7 +78,6 @@ const createOrder = async (
 			if (usage && usage.usedCount >= coupon.perUserLimit)
 				throw new Error("Coupon per-user limit reached");
 
-			// Apply discount
 			if (coupon.discountType === "flat") {
 				subtotal -= coupon.discountValue;
 			} else {
@@ -117,6 +110,9 @@ const createOrder = async (
 			? paymentMethod
 			: "cod";
 
+		const resolvedPaymentMethod =
+			orderType === "dine-in" ? "counter" : validPaymentMethod;
+
 		const newOrder = new Order({
 			user: userId,
 			items: orderItems,
@@ -125,7 +121,7 @@ const createOrder = async (
 			tableNumber,
 			deliveryAddress,
 			status: initialStatus,
-			paymentMethod: validPaymentMethod,
+			paymentMethod: resolvedPaymentMethod,
 			paymentStatus: validPaymentMethod === "online" ? "initiated" : "pending",
 			totalAmount,
 			orderNumber,
@@ -161,9 +157,6 @@ const createOrder = async (
 	}
 };
 
-/* ==========================================================================
-   CONTROLLER: Place Order (UPDATED)
-   ========================================================================== */
 const placeorder = async (req, res) => {
 	try {
 		let {
@@ -175,8 +168,6 @@ const placeorder = async (req, res) => {
 			paymentMethod,
 		} = req.body;
 
-		// 1. CHECK FOR ACTIVE ORDERS FIRST
-		// We exclude orders that are completed, cancelled, or rejected.
 		const existingActiveOrder = await Order.findOne({
 			user: req.user._id,
 			status: { $nin: ["completed", "cancelled", "rejected"] },
@@ -190,7 +181,6 @@ const placeorder = async (req, res) => {
 			});
 		}
 
-		// 2. Validate Request
 		if (!items || !Array.isArray(items) || items.length === 0 || !orderType)
 			return res.status(400).json({ message: "Missing required fields" });
 
@@ -198,7 +188,6 @@ const placeorder = async (req, res) => {
 			return res.status(400).json({ message: "Table number is Required" });
 		}
 
-		// 3. Table Checks (if dine-in)
 		let table = null;
 		if (tableNumber) {
 			table = await Table.findOne({ tableNumber });
@@ -210,8 +199,6 @@ const placeorder = async (req, res) => {
 			if (table.isDisabled) {
 				return res.status(400).json({ message: "Table number is not Active." });
 			}
-			// Optional: Check if table is already occupied by someone else
-			// if (table.currentOrder) { ... }
 		}
 
 		if (orderType === "delivery" && !deliveryAddress)
@@ -220,7 +207,6 @@ const placeorder = async (req, res) => {
 		const user = await User.findById(req.user._id);
 		if (!user) return res.status(404).json({ message: "User not found" });
 
-		// 4. Create Order
 		const newOrder = await createOrder(
 			user,
 			items,
@@ -232,13 +218,11 @@ const placeorder = async (req, res) => {
 			"pending"
 		);
 
-		// 5. Update Table if needed
 		if (table) {
 			table.currentOrder = newOrder._id;
 			await table.save();
 		}
 
-		// 6. Notify Admin
 		const io = getIO();
 		io.to("admin_room").emit("new_order", newOrder);
 
@@ -251,10 +235,6 @@ const placeorder = async (req, res) => {
 		return res.status(500).json({ message: error.message || "Server error" });
 	}
 };
-
-/* ==========================================================================
-   OTHER CONTROLLERS (Unchanged)
-   ========================================================================== */
 
 const getAllOrders = async (req, res) => {
 	try {
@@ -328,7 +308,7 @@ const changeStatus = async (req, res) => {
 			pending: ["accepted", "cancelled"],
 			accepted: ["preparing", "cancelled"],
 			preparing: ["ready", "cancelled"],
-			ready: ["completed", "cancelled"],
+			ready: ["cancelled"],
 			completed: [],
 			cancelled: [],
 		};
@@ -339,7 +319,7 @@ const changeStatus = async (req, res) => {
 		};
 
 		const DELIVERY_RULES = {
-			ready: ["completed"],
+			ready: [],
 		};
 
 		let allowed = [];
@@ -366,11 +346,14 @@ const changeStatus = async (req, res) => {
 				await table.save();
 			}
 		}
+		const userId = order.user._id
+			? order.user._id.toString()
+			: order.user.toString();
 
 		const io = getIO();
 		io.to("admin_room").emit("order_updated", order);
 		io.to("chef_room").emit("order_updated", order);
-		io.to(`user_${order.user}`).emit("order_updated", order);
+		io.to(`user_${userId}`).emit("order_updated", order);
 
 		if (order.orderType === "delivery")
 			io.to("delivery_room").emit("order_updated", order);
@@ -382,37 +365,37 @@ const changeStatus = async (req, res) => {
 	}
 };
 
-const setPaymentType = async (req, res) => {
-	try {
-		const { orderId, paymentType } = req.body;
+// const setPaymentType = async (req, res) => {
+// 	try {
+// 		const { orderId, paymentType } = req.body;
 
-		if (!orderId || !paymentType)
-			return res.status(400).json({ message: "Missing required fields" });
+// 		if (!orderId || !paymentType)
+// 			return res.status(400).json({ message: "Missing required fields" });
 
-		if (req.user.role !== "admin")
-			return res.status(401).json({ message: "Unauthorized" });
+// 		if (req.user.role !== "admin")
+// 			return res.status(401).json({ message: "Unauthorized" });
 
-		if (!["cash", "upi"].includes(paymentType))
-			return res.status(400).json({ message: "Invalid payment type" });
+// 		if (!["cash", "upi"].includes(paymentType))
+// 			return res.status(400).json({ message: "Invalid payment type" });
 
-		const order = await Order.findById(orderId);
-		if (!order) return res.status(404).json({ message: "Order not found" });
+// 		const order = await Order.findById(orderId);
+// 		if (!order) return res.status(404).json({ message: "Order not found" });
 
-		order.paymentType = paymentType;
-		await order.save();
+// 		order.paymentType = paymentType;
+// 		await order.save();
 
-		const io = getIO();
-		io.to("admin_room").emit("order_updated", order);
+// 		const io = getIO();
+// 		io.to("admin_room").emit("order_updated", order);
 
-		return res.status(200).json({
-			message: "Payment type updated",
-			order,
-		});
-	} catch (error) {
-		console.log(error);
-		return res.status(500).json({ message: "Server error" });
-	}
-};
+// 		return res.status(200).json({
+// 			message: "Payment type updated",
+// 			order,
+// 		});
+// 	} catch (error) {
+// 		console.log(error);
+// 		return res.status(500).json({ message: "Server error" });
+// 	}
+// };
 
 const dineInOrder = async (req, res) => {
 	try {
@@ -539,49 +522,71 @@ const addItemToOrder = async (req, res) => {
 
 const closeTable = async (req, res) => {
 	try {
-		const { tableNumber } = req.body;
+		const { tableNumber, paymentType } = req.body;
 
-		if (!tableNumber)
-			return res.status(400).json({ message: "Table number is required" });
+		if (!tableNumber || !paymentType) {
+			return res.status(400).json({
+				message: "Table number and paymentType are required",
+			});
+		}
 
-		if (req.user.role !== "admin")
+		if (!["cash", "upi"].includes(paymentType)) {
+			return res.status(400).json({ message: "Invalid payment type" });
+		}
+
+		if (req.user.role !== "admin") {
 			return res.status(401).json({ message: "Unauthorized" });
+		}
 
 		const table = await Table.findOne({ tableNumber });
 		if (!table) return res.status(404).json({ message: "Table not found" });
 
-		if (!table.currentOrder)
+		if (!table.currentOrder) {
 			return res
 				.status(400)
 				.json({ message: "This table has no active order" });
+		}
 
 		const order = await Order.findById(table.currentOrder);
 		if (!order) return res.status(404).json({ message: "Order not found" });
 
-		order.status = "completed";
+		// 🔒 ENFORCE READY STATE
+		if (order.status !== "ready") {
+			return res
+				.status(400)
+				.json({ message: "Order is not ready to be completed" });
+		}
+
+		// ✅ COMPLETE ORDER (merged logic)
+		order.paymentMethod = "counter";
+		order.paymentType = paymentType;
 		order.paymentStatus = "paid";
+		order.status = "completed";
+
 		await order.save();
 
 		table.currentOrder = null;
 		await table.save();
 
+		const userId = order.user.toString();
 		const io = getIO();
+
 		io.to("admin_room").emit("order_updated", order);
 		io.to("chef_room").emit("order_updated", order);
+		io.to(`user_${userId}`).emit("order_updated", order);
 
 		return res.status(200).json({
-			message: "Table closed successfully",
+			message: "Table closed and order completed",
 			finalBill: {
 				orderId: order._id,
 				total: order.totalAmount,
-				items: order.items,
 				paymentMethod: order.paymentMethod,
-				paymentType: order.paymentType || null,
+				paymentType: order.paymentType,
 			},
 			tableStatus: "free",
 		});
 	} catch (error) {
-		console.log(error);
+		console.error(error);
 		return res.status(500).json({
 			message: error.message || "Server error",
 		});
@@ -623,7 +628,7 @@ export {
 	dineInOrder,
 	addItemToOrder,
 	closeTable,
-	setPaymentType,
+	// setPaymentType,
 	getAllOrders,
 	getLatestOrder,
 	getOneOrders,
