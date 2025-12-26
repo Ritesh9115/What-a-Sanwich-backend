@@ -221,9 +221,30 @@ const verifyEmail = async (req, res) => {
 	user.otpExpiresAt = null;
 	await user.save();
 
-	return res
-		.status(httpStatus.OK)
-		.json({ message: "Email successfully verified" });
+	const token = jwt.sign(
+		{
+			id: user._id,
+			role: user.role,
+			email: user.email,
+		},
+		process.env.JWT_HIDDEN_SECERT,
+		{ expiresIn: "15d" }
+	);
+
+	res.cookie("token", token, {
+		httpOnly: true,
+		secure: true,
+		sameSite: "none",
+		domain: ".sandwichstore.in",
+		maxAge: 15 * 24 * 60 * 60 * 1000,
+	});
+
+	user.password = undefined;
+
+	return res.status(httpStatus.OK).json({
+		message: "Email verified & logged in",
+		user,
+	});
 };
 
 const resendOtp = async (req, res) => {
