@@ -99,10 +99,32 @@ const updateCoupon = async (req, res) => {
 			return res.status(401).json({ message: "Unauthorized access" });
 		}
 
-		const updatedCoupon = await Coupon.findByIdAndUpdate(couponId, updates, {
-			new: true,
-			runValidators: true,
-		});
+		// Whitelist allowed fields to prevent MongoDB operator injection
+		const ALLOWED_FIELDS = [
+			"code",
+			"description",
+			"validFor",
+			"discountType",
+			"discountValue",
+			"specificUsers",
+			"minOrderValue",
+			"maxDiscount",
+			"validFrom",
+			"validTill",
+			"perUserLimit",
+			"maxUsage",
+		];
+
+		const safeUpdates = {};
+		for (const key of ALLOWED_FIELDS) {
+			if (key in updates) safeUpdates[key] = updates[key];
+		}
+
+		const updatedCoupon = await Coupon.findByIdAndUpdate(
+			couponId,
+			{ $set: safeUpdates },
+			{ new: true, runValidators: true }
+		);
 
 		if (!updatedCoupon) {
 			return res.status(404).json({ message: "Coupon not found" });

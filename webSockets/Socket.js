@@ -1,16 +1,16 @@
-import dotenv from "dotenv";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-
-dotenv.config();
+import { env } from "../config/env.js";
+import { allowedOrigins } from "../config/cors.js";
 
 let io;
-const allowedOrigins = [
-	"https://sandwichstore.in",
-	"https://www.sandwichstore.in",
-	"http://localhost:5173",
-];
 
+/**
+ * Initialize Socket.IO on the existing HTTP server.
+ * Auth: reads the httpOnly cookie "token" from the handshake headers.
+ * Rooms: admin/chef/delivery users join their role rooms automatically.
+ *        Every authenticated user joins a personal room "user_<userId>".
+ */
 const socketConnection = (server) => {
 	io = new Server(server, {
 		cors: {
@@ -20,7 +20,7 @@ const socketConnection = (server) => {
 		},
 	});
 
-	// Authentication middleware
+	// ── Auth middleware ──
 	io.use((socket, next) => {
 		try {
 			const cookie = socket.handshake.headers.cookie;
@@ -33,40 +33,48 @@ const socketConnection = (server) => {
 
 			if (!token) return next(new Error("Token missing"));
 
-			const decoded = jwt.verify(token, process.env.JWT_HIDDEN_SECERT);
+			const decoded = jwt.verify(token, env.JWT_HIDDEN_SECERT);
 			socket.role = decoded.role;
 			socket.userId = decoded.id;
-			// socket.userId = decoded._id;
 			next();
-		} catch (err) {
+		} catch {
 			next(new Error("Auth failed"));
 		}
 	});
 
-	// After successful auth
+	// ── Connection handler ──
 	io.on("connection", (socket) => {
-		// console.log("User connected:", socket.id, socket.role);
-
+		// Auto-join role rooms (server-authoritative — not client-requested)
 		if (socket.role === "admin") socket.join("admin_room");
 		if (socket.role === "chef") socket.join("chef_room");
 		if (socket.role === "delivery") socket.join("delivery_room");
 
+		// Always join personal room for order updates
 		socket.join(`user_${socket.userId}`);
+
+		// Allow the client to manually join additional rooms (kept for compatibility)
 		socket.on("join_room", (room) => {
 			socket.join(room);
-			// console.log(`Socket ${socket.id} manually joined ${room}`);
+		});
+
+		socket.on("error", (err) => {
+			console.error(`[socket] Error on socket ${socket.id}:`, err.message);
 		});
 
 		socket.on("disconnect", () => {
-			// console.log("User disconnected:", socket.id);
+			// Cleanup is automatic (Socket.IO removes from all rooms)
 		});
 	});
 
 	return io;
 };
 
+/**
+ * Get the initialized io instance.
+ * Throws if called before socketConnection() runs.
+ */
 const getIO = () => {
-	if (!io) throw new Error("Socket.io not initialized!");
+	if (!io) throw new Error("Socket.IO not initialized");
 	return io;
 };
 

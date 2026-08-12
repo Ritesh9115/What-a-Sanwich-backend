@@ -1,4 +1,28 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment secrets
 .env
-.env.local
-seed
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+
+# Logs
+*.log
+
+# Local temporary files
+*.tmp
+*.temp
+
+# Seed script (local-only, large test data — not needed in production)
+seed.js
+
+# Security / ZAP testing artifacts (local-only, not part of application)
+backend-urls.txt
+backend-parameterized-routes.txt
+backend-zap-endpoints-report.md
+openapi-zap-report.md
+openapi-zap.yaml
+generate-openapi.js

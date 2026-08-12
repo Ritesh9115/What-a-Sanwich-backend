@@ -1,14 +1,16 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import slugify from "slugify";
+import argon2 from "argon2";
 import { Menu } from "./models/Menu.js";
 import { Category } from "./models/Category.js";
+import { User } from "./models/User.js";
 
 dotenv.config();
 
 // ---------------------------------------------------------
 // CONFIGURATION
-// ---------------------------------------------------------
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGODB_URL || process.env.MONGO_URI;
 const DEFAULT_IMG =
 	"https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg";
 
@@ -862,9 +864,11 @@ const seedDB = async () => {
 		console.log("📂 Seeding Categories...");
 		const categoryDocs = uniqueCategories.map((name) => ({
 			name,
+			slug: slugify(name, { lower: true, strict: true }),
 			isActive: true,
 		}));
-		await Category.insertMany(categoryDocs);
+		const createdCategories = await Category.insertMany(categoryDocs);
+		const categoryMap = new Map(createdCategories.map((c) => [c.name, c._id]));
 
 		// 4. PREPARE & INSERT MENU ITEMS
 		console.log("🍔 Seeding Menu Items...");
@@ -892,7 +896,7 @@ const seedDB = async () => {
 				name: item.name,
 				image: DEFAULT_IMG, // Using the placeholder as requested
 				description: item.description,
-				category: item.category,
+				category: categoryMap.get(item.category),
 				subCategory: item.subCategory || "", // Use empty string if no subCategory
 				variants: item.variants,
 				isVeg: true, // Default
@@ -904,7 +908,38 @@ const seedDB = async () => {
 
 		await Menu.insertMany(menuDocs);
 
-		console.log(`✅ Successfully seeded ${menuDocs.length} menu items!`);
+		// 5. SEED TEST USERS
+		console.log("👤 Seeding Test Users...");
+		const hashedAdminPassword = await argon2.hash("admin");
+		const hashedUserPassword = await argon2.hash("user123");
+
+		await User.deleteMany({ email: { $in: ["admin@sandwichstore.in", "user@sandwichstore.in"] } });
+
+		await User.create([
+			{
+				name: "Admin User",
+				email: "admin@sandwichstore.in",
+				password: hashedAdminPassword,
+				phone: "9999999999",
+				role: "admin",
+				isEmailVerified: true,
+				isPhoneVerified: true,
+			},
+			{
+				name: "Test Customer",
+				email: "user@sandwichstore.in",
+				password: hashedUserPassword,
+				phone: "8888888888",
+				role: "customer",
+				isEmailVerified: true,
+				isPhoneVerified: true,
+			},
+		]);
+
+		console.log(`✅ Successfully seeded ${menuDocs.length} menu items & default test users!`);
+		console.log("🔑 Test Credentials:");
+		console.log("   Admin: admin@sandwichstore.in / admin");
+		console.log("   Customer: user@sandwichstore.in / user123");
 		console.log("✨ Database is ready.");
 		process.exit(0);
 	} catch (error) {

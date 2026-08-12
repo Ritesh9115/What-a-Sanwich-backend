@@ -1,13 +1,12 @@
 import httpStatus from "http-status";
 import { User } from "../models/User.js";
 import argon2 from "argon2";
-import dotenv from "dotenv";
-import nodemailer from "nodemailer";
+import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { Resend } from "resend";
-dotenv.config();
+import { env, getCookieOptions, getClearCookieOptions } from "../config/env.js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(env.RESEND_API_KEY);
 
 const sendOtp = async (to, otp) => {
 	try {
@@ -227,22 +226,17 @@ const verifyEmail = async (req, res) => {
 			role: user.role,
 			email: user.email,
 		},
-		process.env.JWT_HIDDEN_SECERT,
+		env.JWT_HIDDEN_SECERT,
 		{ expiresIn: "15d" }
 	);
 
-	res.cookie("token", token, {
-		httpOnly: true,
-		secure: true,
-		sameSite: "none",
-		domain: ".sandwichstore.in",
-		maxAge: 15 * 24 * 60 * 60 * 1000,
-	});
+	res.cookie("token", token, getCookieOptions());
 
 	user.password = undefined;
 
 	return res.status(httpStatus.OK).json({
 		message: "Email verified & logged in",
+		token,
 		user,
 	});
 };
@@ -368,7 +362,8 @@ const verifyForgotOtp = async (req, res) => {
 	if (user.verificationEmailCode != otp) {
 		return res.status(httpStatus.CONFLICT).json({ message: "Otp not match" });
 	}
-	const resetToken = Math.random().toString(36).substring(2, 15);
+	// Use cryptographically secure random bytes for reset token
+	const resetToken = crypto.randomBytes(32).toString("hex");
 
 	user.verificationEmailCode = null;
 	user.otpExpiresAt = null;
@@ -427,7 +422,6 @@ const login = async (req, res) => {
 			.status(httpStatus.NOT_FOUND)
 			.json({ message: "Password does not match" });
 	}
-	console.log("SIGN SECRET:", process.env.JWT_HIDDEN_SECERT);
 
 	const token = jwt.sign(
 		{
@@ -435,21 +429,16 @@ const login = async (req, res) => {
 			role: user.role,
 			email: user.email,
 		},
-		process.env.JWT_HIDDEN_SECERT,
+		env.JWT_HIDDEN_SECERT,
 		{ expiresIn: "15d" }
 	);
 
-	res.cookie("token", token, {
-		httpOnly: true,
-		secure: true,
-		maxAge: 15 * 24 * 60 * 60 * 1000,
-		sameSite: "none",
-		domain: ".sandwichstore.in",
-	});
+	res.cookie("token", token, getCookieOptions());
 
 	user.password = undefined;
 	return res.status(200).json({
 		message: "Login successful",
+		token,
 		user,
 	});
 };
@@ -517,32 +506,21 @@ const verifyLoginWithOtp = async (req, res) => {
 			role: user.role,
 			email: user.email,
 		},
-		process.env.JWT_HIDDEN_SECERT,
+		env.JWT_HIDDEN_SECERT,
 		{ expiresIn: "15d" }
 	);
-	res.cookie("token", token, {
-		httpOnly: true,
-		secure: true,
-		maxAge: 15 * 24 * 60 * 60 * 1000,
-		sameSite: "none",
-		domain: ".sandwichstore.in",
-	});
+	res.cookie("token", token, getCookieOptions());
 
 	user.verificationEmailCode = null;
 	user.otpExpiresAt = null;
 	await user.save();
 	user.password = undefined;
 
-	return res.status(200).json({ message: "Otp verified", user });
+	return res.status(200).json({ message: "Otp verified", token, user });
 };
 
 const logout = async (req, res) => {
-	res.clearCookie("token", {
-		httpOnly: true,
-		secure: true,
-		domain: ".sandwichstore.in",
-		sameSite: "none",
-	});
+	res.clearCookie("token", getClearCookieOptions());
 	return res.status(200).json({ message: "Logged out successfully" });
 };
 

@@ -60,7 +60,7 @@ const menuSchema = new Schema({
 	discountPrice: {
 		type: Number,
 	},
-});
+}, { timestamps: true });
 
 const Menu = mongoose.model("Menu", menuSchema);
 

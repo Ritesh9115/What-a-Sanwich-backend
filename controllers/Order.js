@@ -96,14 +96,12 @@ const createOrder = async (
 
 		const today = dayjs().format("YYYY-MM-DD");
 
-		let counter = await Counter.findOne({ date: today });
-
-		if (!counter) {
-			counter = await Counter.create({ date: today, seq: 1 });
-		} else {
-			counter.seq += 1;
-			await counter.save();
-		}
+		// Atomic upsert — eliminates race condition under concurrent orders
+		const counter = await Counter.findOneAndUpdate(
+			{ date: today },
+			{ $inc: { seq: 1 } },
+			{ new: true, upsert: true }
+		);
 
 		const orderNumber = counter.seq;
 

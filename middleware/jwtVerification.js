@@ -1,47 +1,68 @@
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import httpStatus from "http-status";
 import { User } from "../models/User.js";
+import { env } from "../config/env.js";
 
-dotenv.config();
-
+/**
+ * isLogin(allowedRoles)
+ * Middleware factory that:
+ *  1. Reads the httpOnly cookie "token"
+ *  2. Verifies the JWT
+ *  3. Fetches the user from DB (catches deleted/non-existent accounts)
+ *  4. Checks the user is not soft-deleted
+ *  5. Enforces role-based access if allowedRoles is provided
+ */
 const isLogin = (allowedRole = []) => {
 	return async (req, res, next) => {
 		try {
-			const token = req.cookies?.token;
+			const token =
+				req.cookies?.token ||
+				req.headers.authorization?.replace(/^Bearer\s+/i, "");
 
 			if (!token) {
 				return res.status(httpStatus.UNAUTHORIZED).json({
+					success: false,
 					message: "Please login first",
+					code: "UNAUTHENTICATED",
 				});
 			}
 
-			// 2️⃣ Verify JWT
-			const decoded = jwt.verify(token, process.env.JWT_HIDDEN_SECERT);
+			const decoded = jwt.verify(token, env.JWT_HIDDEN_SECERT);
 
-			// 3️⃣ Fetch user from DB
 			const user = await User.findById(decoded.id);
 
 			if (!user) {
 				return res.status(httpStatus.NOT_FOUND).json({
+					success: false,
 					message: "User no longer exists",
+					code: "USER_NOT_FOUND",
 				});
 			}
 
-			// 4️⃣ Role check (ONLY if roles are provided)
+			// Block soft-deleted accounts from using their existing JWT
+			if (user.isDeleted) {
+				return res.status(httpStatus.UNAUTHORIZED).json({
+					success: false,
+					message: "Account has been deleted",
+					code: "ACCOUNT_DELETED",
+				});
+			}
+
 			if (allowedRole.length > 0 && !allowedRole.includes(user.role)) {
 				return res.status(httpStatus.FORBIDDEN).json({
+					success: false,
 					message: "Access denied",
+					code: "FORBIDDEN",
 				});
 			}
 
-			// 5️⃣ Attach user to request
 			req.user = user;
 			next();
 		} catch (error) {
-			console.log("JWT ERROR:", error.message);
 			return res.status(httpStatus.UNAUTHORIZED).json({
+				success: false,
 				message: "Invalid or expired token",
+				code: "INVALID_TOKEN",
 			});
 		}
 	};

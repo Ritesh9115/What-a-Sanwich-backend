@@ -304,8 +304,11 @@ const searchMenu = async (req, res) => {
 			return res.status(400).json({ message: "Search query required" });
 		}
 
+		// Escape special regex characters to prevent ReDoS
+		const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 		const menu = await Menu.find({
-			name: { $regex: query, $options: "i" },
+			name: { $regex: escapedQuery, $options: "i" },
 		})
 			.sort({ name: 1 })
 			.populate("category", "name image isActive")

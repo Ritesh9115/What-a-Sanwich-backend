@@ -88,26 +88,26 @@ const showAllUsers = async (req, res) => {
 
 const searchByEmail = async (req, res) => {
 	try {
-		const { email } = req.body;
-		if (!email) {
+		const email = req.body?.email;
+		if (!email || typeof email !== "string") {
 			return res
 				.status(httpStatus.BAD_REQUEST)
-				.json({ message: "Required All fields" });
+				.json({ message: "Valid email string required" });
 		}
 		if (!req.user || req.user.role !== "admin") {
 			return res
 				.status(httpStatus.UNAUTHORIZED)
 				.json({ message: "Not authorized" });
 		}
-		const user = await User.findOne({ email });
-		if (!user) {
-			return res
-				.status(httpStatus.NOT_FOUND)
-				.json({ message: "No user found" });
-		}
+		// Escape regex to prevent ReDoS, and case-insensitive partial match
+		const escapedEmail = email.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+		const users = await User.find({
+			email: { $regex: escapedEmail, $options: "i" },
+		}).select("-password");
+
 		return res
 			.status(httpStatus.OK)
-			.json({ message: "User fetched successfully", user });
+			.json({ message: "Users fetched successfully", users });
 	} catch (error) {
 		console.log(error);
 		return res

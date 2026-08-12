@@ -28,7 +28,8 @@ const orderSchema = new Schema(
 		],
 		coupons: {
 			type: mongoose.Schema.Types.ObjectId,
-			ref: "Coupons",
+			// Fixed: was "Coupons" (wrong) — model is registered as "Coupon"
+			ref: "Coupon",
 		},
 		orderType: {
 			type: String,
@@ -95,5 +96,10 @@ const orderSchema = new Schema(
 );
 
 const Order = mongoose.model("Order", orderSchema);
+
+// Indexes for common query patterns
+orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ createdAt: -1 });
 
 export { Order };
